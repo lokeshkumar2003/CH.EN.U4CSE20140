@@ -1,32 +1,30 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, HTTPException
 import requests
 
-app = Flask(__name__)
-@app.route('/numbers', methods=['GET'])
-def get_numbers():
-    urls = request.args.getlist('url')
+app = FastAPI()
 
+@app.get('/numbers')
+async def get_numbers(url: str):
+    urls = url.split(',')
     valid_numbers = []
 
     for url in urls:
-        num = fetch_the_numbers_from_url(url)
+        num = await fetch_numbers_from_url(url)
         if num is not None:
             valid_numbers.extend(num)
 
-    return jsonify(numbers=sorted(list(set(valid_numbers))))
+    sorted_unique_numbers = sorted(set(valid_numbers))
+    return {"numbers": sorted_unique_numbers}
 
-
-def fetch_the_numbers_from_url(url):
+async def fetch_numbers_from_url(url):
     try:
-        response = requests.get(url)
+        response = await requests.get(url, timeout=0.5)
         if response.status_code == 200:
             data = response.json()
             if "numbers" in data and isinstance(data["numbers"], list):
                 return data["numbers"]
+    except requests.exceptions.Timeout:
+        pass
     except:
         pass
     return None
-
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8008)
